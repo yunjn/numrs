@@ -49,6 +49,31 @@ impl Vec2 {
             }
         }
     }
+
+    pub fn angle_to(&self, other: &Vec2) -> f64 {
+        let mag_self = self.mag();
+        let mag_other = other.mag();
+
+        if mag_self < EPSILON || mag_other < EPSILON {
+            return 0.0;
+        }
+
+        let cos_theta = self.dot(other) / (mag_self * mag_other);
+        cos_theta.clamp(-1.0, 1.0).acos()
+    }
+
+    pub fn angle_to_signed(&self, other: &Vec2) -> f64 {
+        let mag_self = self.mag();
+        let mag_other = other.mag();
+
+        if mag_self < EPSILON || mag_other < EPSILON {
+            return 0.0;
+        }
+
+        let dot = self.dot(other);
+        let det = self.cross(other);
+        det.atan2(dot)
+    }
 }
 
 impl Default for Vec2 {
@@ -95,17 +120,26 @@ pub type Point2D = Vec2;
 
 impl Point2D {
     pub fn dist(&self, other: &Point2D) -> f64 {
-        (*self - *other).mag().abs()
+        (*self - *other).mag()
     }
 
     pub fn dist_sq(&self, other: &Point2D) -> f64 {
-        (*self - *other).mag_sq().abs()
+        (*self - *other).mag_sq()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::f64::consts::{FRAC_PI_2, PI};
+
+    #[test]
+    fn test_constants() {
+        assert_eq!(Vec2::ZERO, Vec2::new(0.0, 0.0));
+        assert_eq!(Vec2::ONE, Vec2::new(1.0, 1.0));
+        assert_eq!(Vec2::UNIT_X, Vec2::new(1.0, 0.0));
+        assert_eq!(Vec2::UNIT_Y, Vec2::new(0.0, 1.0));
+    }
 
     #[test]
     fn test_default() {
@@ -120,102 +154,180 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let v1: Vec2 = Vec2::UNIT_X;
-        let v2: Vec2 = Vec2::UNIT_Y;
-        assert_eq!(v1 + v2, Vec2::ONE);
+        let v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(3.0, 4.0);
+        assert_eq!(v1 + v2, Vec2::new(4.0, 6.0));
     }
 
     #[test]
     fn test_sub() {
-        let v1: Vec2 = Vec2::ONE * 2.0;
-        let v2: Vec2 = Vec2::ONE;
-        assert_eq!(v1 - v2, Vec2::ONE);
+        let v1 = Vec2::new(5.0, 7.0);
+        let v2 = Vec2::new(2.0, 3.0);
+        assert_eq!(v1 - v2, Vec2::new(3.0, 4.0));
     }
 
     #[test]
-    fn test_scalar_mul() {
-        let v: Vec2 = Vec2::ONE;
-        assert_eq!(2.0 * v, Vec2::new(2.0, 2.0));
+    fn test_scalar_mul_left() {
+        let v = Vec2::new(1.0, 2.0);
+        assert_eq!(3.0 * v, Vec2::new(3.0, 6.0));
+    }
+
+    #[test]
+    fn test_scalar_mul_right() {
+        let v = Vec2::new(1.0, 2.0);
+        assert_eq!(v * 3.0, Vec2::new(3.0, 6.0));
     }
 
     #[test]
     fn test_scalar_div() {
-        let v: Vec2 = Vec2::new(2.0, 2.0);
-        assert_eq!(v / 2.0, Vec2::ONE);
+        let v = Vec2::new(4.0, 6.0);
+        assert_eq!(v / 2.0, Vec2::new(2.0, 3.0));
+    }
+
+    #[test]
+    fn test_component_mul() {
+        let v1 = Vec2::new(2.0, 3.0);
+        let v2 = Vec2::new(4.0, 5.0);
+        assert_eq!(v1 * v2, Vec2::new(8.0, 15.0));
     }
 
     #[test]
     fn test_mag() {
-        let v: Vec2 = Vec2::UNIT_X * 3.0 + Vec2::UNIT_Y * 4.0;
-        assert_eq!(v.mag(), 5.0);
+        let v = Vec2::new(3.0, 4.0);
+        assert!((v.mag() - 5.0).abs() < EPSILON);
     }
 
     #[test]
     fn test_mag_sq() {
-        let v: Vec2 = Vec2::UNIT_X * 3.0 + Vec2::UNIT_Y * 4.0;
+        let v = Vec2::new(3.0, 4.0);
         assert_eq!(v.mag_sq(), 25.0);
     }
 
     #[test]
     fn test_dot() {
-        let v1: Vec2 = Vec2::new(1.0, 2.0);
-        let v2: Vec2 = Vec2::new(3.0, 4.0);
+        let v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(3.0, 4.0);
         assert_eq!(v1.dot(&v2), 11.0);
     }
 
     #[test]
     fn test_cross() {
-        let v1: Vec2 = Vec2::UNIT_X;
-        let v2: Vec2 = Vec2::UNIT_Y;
-        assert_eq!(v1.cross(&v2), 1.0);
+        let x = Vec2::UNIT_X;
+        let y = Vec2::UNIT_Y;
+        assert_eq!(x.cross(&y), 1.0); // X × Y = +1 (out of screen)
+        assert_eq!(y.cross(&x), -1.0); // Y × X = -1
     }
 
     #[test]
     fn test_map() {
-        let v: Vec2 = Vec2::ZERO;
-        let mapped: Vec2 = v.map(|x| x + 1.0);
-        assert_eq!(mapped, Vec2::ONE);
+        let v = Vec2::new(1.0, 2.0);
+        let mapped = v.map(|x| x * 2.0 + 1.0);
+        assert_eq!(mapped, Vec2::new(3.0, 5.0));
     }
 
     #[test]
     fn test_normalize() {
-        let v: Vec2 = Vec2::new(3.0, 4.0);
-        let n: Vec2 = v.normalize();
+        let v = Vec2::new(3.0, 4.0);
+        let n = v.normalize();
         assert!((n.mag() - 1.0).abs() < 1e-10);
     }
 
     #[test]
-    fn test_dist() {
-        let v1: Vec2 = Point2D::new(1.0, 1.0);
-        let v2: Vec2 = Point2D::new(1.0, 2.0);
-        assert_eq!(v1.dist(&v2), 1.0);
-    }
-
-    #[test]
-    fn test_dist_sq() {
-        let v1: Vec2 = Point2D::new(0.0, 0.0);
-        let v2: Vec2 = Point2D::new(1.0, 1.0);
-        assert_eq!(v1.dist_sq(&v2), 2.0);
-    }
-
-    #[test]
-    fn test_zero_length_normalize() {
-        let v: Vec2 = Vec2::ZERO;
-        let n: Vec2 = v.normalize();
+    fn test_normalize_zero() {
+        let v = Vec2::ZERO;
+        let n = v.normalize();
         assert_eq!(n, Vec2::ZERO);
     }
 
     #[test]
-    fn test_dot_perpendicular() {
-        let v1: Vec2 = Vec2::UNIT_X;
-        let v2: Vec2 = Vec2::UNIT_Y;
-        assert_eq!(v1.dot(&v2), 0.0);
+    fn test_angle_to() {
+        let x = Vec2::UNIT_X;
+        let y = Vec2::UNIT_Y;
+
+        // Orthogonal → π/2
+        assert!((x.angle_to(&y) - FRAC_PI_2).abs() < 1e-10);
+
+        // Same direction → 0
+        assert!(x.angle_to(&x) < EPSILON);
+
+        // Opposite → π
+        assert!((x.angle_to(&-x) - PI).abs() < 1e-10);
+
+        // Non-unit vectors
+        let a = Vec2::new(2.0, 0.0);
+        let b = Vec2::new(0.0, 3.0);
+        assert!((a.angle_to(&b) - FRAC_PI_2).abs() < 1e-10);
     }
 
     #[test]
-    fn test_component_mul() {
-        let v1: Vec2 = Vec2::new(2.0, 3.0);
-        let v2: Vec2 = Vec2::new(4.0, 5.0);
-        assert_eq!(v1 * v2, Vec2::new(8.0, 15.0));
+    fn test_angle_to_signed() {
+        let forward = Vec2::UNIT_X;
+        let left = Vec2::UNIT_Y;
+        let right = Vec2::new(0.0, -1.0);
+        let back = -Vec2::UNIT_X;
+
+        // Counter-clockwise (positive)
+        assert!((forward.angle_to_signed(&left) - FRAC_PI_2).abs() < 1e-10);
+
+        // Clockwise (negative)
+        assert!((forward.angle_to_signed(&right) + FRAC_PI_2).abs() < 1e-10);
+
+        // 180 degrees (π or -π, but atan2 returns π for (-1, 0))
+        assert!((forward.angle_to_signed(&back) - PI).abs() < 1e-10);
+
+        // Zero angle
+        assert!(forward.angle_to_signed(&forward).abs() < EPSILON);
+    }
+
+    #[test]
+    fn test_angle_to_zero_vector() {
+        let v = Vec2::UNIT_X;
+        let zero = Vec2::ZERO;
+        assert_eq!(v.angle_to(&zero), 0.0);
+        assert_eq!(v.angle_to_signed(&zero), 0.0);
+    }
+
+    #[test]
+    fn test_dist() {
+        let p1 = Point2D::new(1.0, 1.0);
+        let p2 = Point2D::new(1.0, 2.0);
+        assert!((p1.dist(&p2) - 1.0).abs() < EPSILON);
+    }
+
+    #[test]
+    fn test_dist_sq() {
+        let p1 = Point2D::new(0.0, 0.0);
+        let p2 = Point2D::new(1.0, 1.0);
+        assert_eq!(p1.dist_sq(&p2), 2.0);
+    }
+
+    #[test]
+    fn test_display() {
+        let v = Vec2::new(1.5, -2.5);
+        assert_eq!(format!("{}", v), "(1.5, -2.5)");
+    }
+
+    #[test]
+    fn test_partial_eq_epsilon() {
+        let v1 = Vec2::new(1.0, 1.0);
+        let v2 = Vec2::new(1.0 + EPSILON / 2.0, 1.0);
+        assert_eq!(v1, v2); // Within tolerance
+
+        let v3 = Vec2::new(1.0 + 2.0 * EPSILON, 1.0);
+        assert_ne!(v1, v3); // Outside tolerance
+    }
+
+    #[test]
+    fn test_partial_ord() {
+        let v1 = Vec2::new(1.0, 2.0);
+        let v2 = Vec2::new(1.0, 3.0);
+        assert!(v1 < v2); // Lexicographic order
+    }
+
+    #[test]
+    fn test_dot_perpendicular() {
+        let x = Vec2::UNIT_X;
+        let y = Vec2::UNIT_Y;
+        assert_eq!(x.dot(&y), 0.0);
     }
 }
