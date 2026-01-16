@@ -1,5 +1,6 @@
+use crate::EPSILON;
+use crate::Mat2;
 use derive_more::{Add, Constructor, Div, Mul, Neg, Sub};
-use std::fmt;
 
 #[derive(Add, Sub, Div, Mul, Neg, Clone, Copy, Debug, PartialOrd, Constructor)]
 pub struct Vec2 {
@@ -82,13 +83,11 @@ impl Default for Vec2 {
     }
 }
 
-impl fmt::Display for Vec2 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for Vec2 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
     }
 }
-
-const EPSILON: f64 = 1e-9;
 
 impl PartialEq for Vec2 {
     fn eq(&self, other: &Self) -> bool {
@@ -113,6 +112,13 @@ impl std::ops::Mul<Vec2> for Vec2 {
             x: self.x * vector.x,
             y: self.y * vector.y,
         }
+    }
+}
+
+impl std::ops::Mul<Mat2> for Vec2 {
+    type Output = Vec2;
+    fn mul(self, m: Mat2) -> Vec2 {
+        Vec2::new(m.a * self.x + m.b * self.y, m.c * self.x + m.d * self.y)
     }
 }
 
@@ -329,5 +335,27 @@ mod tests {
         let x = Vec2::UNIT_X;
         let y = Vec2::UNIT_Y;
         assert_eq!(x.dot(&y), 0.0);
+    }
+
+    #[test]
+    fn test_vec2_mul_mat2() {
+        let v = Vec2::new(1.0, 2.0);
+        let m = Mat2::new(2.0, 0.0, 0.0, 3.0); // scale(2, 3)
+
+        // Row vector: [1, 2] * [[2, 0],
+        //                        [0, 3]] = [1*2 + 2*0, 1*0 + 2*3] = [2, 6]
+        let result = v * m;
+        assert_eq!(result, Vec2::new(2.0, 6.0));
+
+        // Identity
+        assert_eq!(v * Mat2::IDENTITY, v);
+
+        // Rotation 90° CCW:
+        // Mat2::from_angle(π/2) = [[0, -1], [1, 0]]
+        // [1, 0] * [[0, -1], [1, 0]] = [0*1 + 1*0, -1*1 + 0*0] ❌ 等等！
+        let rot = Mat2::new(0.0, 1.0, -1.0, 0.0); // 这是 [[0,1],[-1,0]]，即转置后的 90° 旋转
+        let v_x = Vec2::UNIT_X; // (1, 0)
+        let result = v_x * rot; // 应该得到 (0, -1) → 向下
+        assert_eq!(result, Vec2::new(0.0, -1.0));
     }
 }

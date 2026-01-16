@@ -1,5 +1,6 @@
+use crate::EPSILON;
+use crate::Mat3;
 use derive_more::{Add, Constructor, Div, Mul, Neg, Sub};
-use std::fmt;
 
 #[derive(Add, Sub, Mul, Div, Neg, Clone, Copy, Debug, PartialOrd, Constructor)]
 pub struct Vec3 {
@@ -101,13 +102,11 @@ impl Default for Vec3 {
     }
 }
 
-impl fmt::Display for Vec3 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for Vec3 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {}, {})", self.x, self.y, self.z)
     }
 }
-
-const EPSILON: f64 = 1e-9;
 
 impl PartialEq for Vec3 {
     fn eq(&self, other: &Self) -> bool {
@@ -136,6 +135,17 @@ impl std::ops::Mul<Vec3> for Vec3 {
             y: self.y * vec.y,
             z: self.z * vec.z,
         }
+    }
+}
+
+impl std::ops::Mul<Mat3> for Vec3 {
+    type Output = Vec3;
+    fn mul(self, m: Mat3) -> Vec3 {
+        Vec3::new(
+            self.x * m.a + self.y * m.d + self.z * m.g,
+            self.x * m.b + self.y * m.e + self.z * m.h,
+            self.x * m.c + self.y * m.f + self.z * m.i,
+        )
     }
 }
 
@@ -199,13 +209,13 @@ mod tests {
     #[test]
     fn test_scalar_mul_right() {
         let v = Vec3::new(1.0, 2.0, 3.0);
-        assert_eq!(v * 2.0, Vec3::new(2.0, 4.0, 6.0)); 
+        assert_eq!(v * 2.0, Vec3::new(2.0, 4.0, 6.0));
     }
 
     #[test]
     fn test_scalar_div() {
         let v = Vec3::new(2.0, 4.0, 6.0);
-        assert_eq!(v / 2.0, Vec3::new(1.0, 2.0, 3.0)); 
+        assert_eq!(v / 2.0, Vec3::new(1.0, 2.0, 3.0));
     }
 
     #[test]
@@ -335,5 +345,60 @@ mod tests {
         let v1 = Vec3::new(1.0, 2.0, 3.0);
         let v2 = Vec3::new(1.0, 2.0, 4.0);
         assert!(v1 < v2); // Lexicographic comparison
+    }
+
+    #[test]
+    fn test_vec3_mul_mat3() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        let m = Mat3::from_scale(2.0, 3.0, 4.0); // diag(2,3,4)
+
+        // Row vector: [1,2,3] * diag(2,3,4) = [1*2, 2*3, 3*4] = [2,6,12]
+        let result = v * m;
+        assert_eq!(result, Vec3::new(2.0, 6.0, 12.0));
+
+        // Identity
+        assert_eq!(v * Mat3::IDENTITY, v);
+
+        // Test with non-diagonal matrix
+        // Let M = [[1,0,0],
+        //          [1,1,0],
+        //          [0,0,1]]
+        let m = Mat3::new(1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+        let v = Vec3::new(2.0, 3.0, 4.0);
+        // [2,3,4] * M = [
+        //   2*1 + 3*1 + 4*0,
+        //   2*0 + 3*1 + 4*0,
+        //   2*0 + 3*0 + 4*1
+        // ] = [5, 3, 4]
+        let result = v * m;
+        assert_eq!(result, Vec3::new(5.0, 3.0, 4.0));
+    }
+
+    #[test]
+    fn test_vec3_mul_mat3_rotation_consistency() {
+        // For row vectors, v * R should equal (R^T * v_col)^T
+        // We'll test with Z-rotation
+        let angle = FRAC_PI_2; // 90°
+        let rot_z = Mat3::from_rotation_z(angle); // column-vector rotation matrix
+
+        let v_row = Vec3::UNIT_X; // (1, 0, 0)
+        let result_row = v_row * rot_z;
+
+        // Column-vector way: rot_z * Vec3::UNIT_X = (0, 1, 0)
+        // So row-vector result should be (0, 1, 0) as well?
+        // Actually, no: row * R = (R^T * col)^T
+        // R^T for Z-rotation is rotation by -angle
+        let expected = Vec3::new(0.0, -1.0, 0.0); // because cos(-90)=0, sin(-90)=-1
+
+        // But let's compute directly from your implementation:
+        // rot_z = [[cos, -sin, 0],
+        //          [sin,  cos, 0],
+        //          [0,    0,   1]]
+        // v_row * rot_z = [
+        //   1*cos + 0*sin + 0*0,
+        //   1*(-sin) + 0*cos + 0*0,
+        //   0
+        // ] = [cos, -sin, 0] = [0, -1, 0]
+        assert!((result_row - expected).mag() < 1e-10);
     }
 }
