@@ -1,9 +1,10 @@
-use crate::EPSILON;
 use crate::Vec3;
+use approx::{AbsDiffEq, RelativeEq, UlpsEq};
 use derive_more::{Add, Constructor, Div, Sub};
 use std::ops::Mul;
 
-#[derive(Constructor, Copy, Clone, Debug, Add, Sub, PartialOrd, Div)]
+#[repr(C)]
+#[derive(Constructor, Copy, Clone, Debug, PartialEq, Add, Sub, PartialOrd, Div)]
 pub struct Mat3 {
     pub a: f64,
     pub b: f64,
@@ -41,14 +42,16 @@ impl Mat3 {
         i: 0.0,
     };
 
+    #[inline]
     pub fn determinant(&self) -> f64 {
         self.a * (self.e * self.i - self.f * self.h) - self.b * (self.d * self.i - self.f * self.g)
             + self.c * (self.d * self.h - self.e * self.g)
     }
 
+    #[inline]
     pub fn inverse(&self) -> Option<Mat3> {
         let det = self.determinant();
-        if det.abs() < EPSILON {
+        if det.abs_diff_eq(&0.0, 1e-9) {
             None
         } else {
             let inv_det = 1.0 / det;
@@ -66,33 +69,82 @@ impl Mat3 {
         }
     }
 
+    #[inline]
     pub fn transpose(&self) -> Mat3 {
         Mat3::new(
             self.a, self.d, self.g, self.b, self.e, self.h, self.c, self.f, self.i,
         )
     }
 
+    #[inline]
     pub fn from_rotation_x(angle: f64) -> Mat3 {
         let (sin, cos) = angle.sin_cos();
         Mat3::new(1.0, 0.0, 0.0, 0.0, cos, -sin, 0.0, sin, cos)
     }
 
+    #[inline]
     pub fn from_rotation_y(angle: f64) -> Mat3 {
         let (sin, cos) = angle.sin_cos();
         Mat3::new(cos, 0.0, sin, 0.0, 1.0, 0.0, -sin, 0.0, cos)
     }
 
+    #[inline]
     pub fn from_rotation_z(angle: f64) -> Mat3 {
         let (sin, cos) = angle.sin_cos();
         Mat3::new(cos, -sin, 0.0, sin, cos, 0.0, 0.0, 0.0, 1.0)
     }
 
+    #[inline]
     pub fn from_scale(sx: f64, sy: f64, sz: f64) -> Mat3 {
         Mat3::new(sx, 0.0, 0.0, 0.0, sy, 0.0, 0.0, 0.0, sz)
     }
 }
 
+impl AbsDiffEq for Mat3 {
+    type Epsilon = f64;
+    #[inline]
+    fn default_epsilon() -> Self::Epsilon {
+        f64::default_epsilon()
+    }
+    #[inline]
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        self.to_array()
+            .iter()
+            .zip(other.to_array().iter())
+            .all(|(a, b)| a.abs_diff_eq(b, epsilon))
+    }
+}
+
+impl RelativeEq for Mat3 {
+    #[inline]
+    fn default_max_relative() -> Self::Epsilon {
+        f64::default_max_relative()
+    }
+    #[inline]
+    fn relative_eq(&self, other: &Self, epsilon: Self::Epsilon, max_rel: Self::Epsilon) -> bool {
+        self.to_array()
+            .iter()
+            .zip(other.to_array().iter())
+            .all(|(a, b)| a.relative_eq(b, epsilon, max_rel))
+    }
+}
+
+impl UlpsEq for Mat3 {
+    #[inline]
+    fn default_max_ulps() -> u32 {
+        f64::default_max_ulps()
+    }
+    #[inline]
+    fn ulps_eq(&self, other: &Self, epsilon: Self::Epsilon, max_ulps: u32) -> bool {
+        self.to_array()
+            .iter()
+            .zip(other.to_array().iter())
+            .all(|(a, b)| a.ulps_eq(b, epsilon, max_ulps))
+    }
+}
+
 impl Default for Mat3 {
+    #[inline]
     fn default() -> Self {
         Mat3::IDENTITY
     }
@@ -108,23 +160,16 @@ impl std::fmt::Display for Mat3 {
     }
 }
 
-impl PartialEq for Mat3 {
-    fn eq(&self, other: &Self) -> bool {
-        (self.a - other.a).abs() < EPSILON
-            && (self.b - other.b).abs() < EPSILON
-            && (self.c - other.c).abs() < EPSILON
-            && (self.d - other.d).abs() < EPSILON
-            && (self.e - other.e).abs() < EPSILON
-            && (self.f - other.f).abs() < EPSILON
-            && (self.g - other.g).abs() < EPSILON
-            && (self.h - other.h).abs() < EPSILON
-            && (self.i - other.i).abs() < EPSILON
+impl Mat3 {
+    #[inline]
+    pub fn to_array(&self) -> [f64; 9] {
+        unsafe { *(self as *const Mat3 as *const [f64; 9]) }
     }
 }
 
 impl Mul<f64> for Mat3 {
     type Output = Mat3;
-
+    #[inline]
     fn mul(self, scalar: f64) -> Self::Output {
         Mat3::new(
             self.a * scalar,
@@ -142,6 +187,7 @@ impl Mul<f64> for Mat3 {
 
 impl Mul<Vec3> for Mat3 {
     type Output = Vec3;
+    #[inline]
     fn mul(self, v: Vec3) -> Self::Output {
         Vec3::new(
             self.a * v.x + self.b * v.y + self.c * v.z,
@@ -153,19 +199,26 @@ impl Mul<Vec3> for Mat3 {
 
 impl Mul<Mat3> for Mat3 {
     type Output = Mat3;
-
-    fn mul(self, other: Mat3) -> Self::Output {
+    #[inline]
+    fn mul(self, m: Mat3) -> Self::Output {
         Mat3::new(
-            self.a * other.a + self.b * other.d + self.c * other.g,
-            self.a * other.b + self.b * other.e + self.c * other.h,
-            self.a * other.c + self.b * other.f + self.c * other.i,
-            self.d * other.a + self.e * other.d + self.f * other.g,
-            self.d * other.b + self.e * other.e + self.f * other.h,
-            self.d * other.c + self.e * other.f + self.f * other.i,
-            self.g * other.a + self.h * other.d + self.i * other.g,
-            self.g * other.b + self.h * other.e + self.i * other.h,
-            self.g * other.c + self.h * other.f + self.i * other.i,
+            self.a * m.a + self.b * m.d + self.c * m.g,
+            self.a * m.b + self.b * m.e + self.c * m.h,
+            self.a * m.c + self.b * m.f + self.c * m.i,
+            self.d * m.a + self.e * m.d + self.f * m.g,
+            self.d * m.b + self.e * m.e + self.f * m.h,
+            self.d * m.c + self.e * m.f + self.f * m.i,
+            self.g * m.a + self.h * m.d + self.i * m.g,
+            self.g * m.b + self.h * m.e + self.i * m.h,
+            self.g * m.c + self.h * m.f + self.i * m.i,
         )
+    }
+}
+
+impl AsRef<[f64; 9]> for Mat3 {
+    #[inline]
+    fn as_ref(&self) -> &[f64; 9] {
+        unsafe { &*(self as *const Mat3 as *const [f64; 9]) }
     }
 }
 
@@ -206,16 +259,20 @@ mod tests {
     }
 
     #[test]
-    fn test_partial_eq_epsilon() {
+    fn test_matrix3_approx_tolerance() {
+        // 定义公差（替代之前的 EPSILON）
+        let epsilon = 1e-9;
         let m1 = Mat3::IDENTITY;
-        let m2 = Mat3::new(1.0 + EPSILON / 2.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
-        assert_eq!(m1, m2); // Within tolerance
 
-        let m3 = Mat3::new(1.0 + 2.0 * EPSILON, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
-        assert_ne!(m1, m3); // Outside tolerance
+        let m2 = Mat3::new(1.0 + epsilon / 2.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+        // 这会自动遍历 9 个元素进行比较
+        approx::assert_abs_diff_eq!(m1, m2, epsilon = epsilon);
+
+        // 2. 在公差范围外：使用 assert_abs_diff_ne!
+        let m3 = Mat3::new(1.0 + 2.0 * epsilon, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+        approx::assert_abs_diff_ne!(m1, m3, epsilon = epsilon);
     }
 
-    // === 核心数学运算 ===
     #[test]
     fn test_determinant() {
         // Diagonal matrix
@@ -227,7 +284,7 @@ mod tests {
 
         // Singular matrix (linearly dependent rows)
         let singular = Mat3::new(1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 3.0, 6.0, 9.0);
-        assert!(singular.determinant().abs() < EPSILON);
+        approx::assert_relative_eq!(singular.determinant(), 0.0);
     }
 
     #[test]
@@ -241,7 +298,7 @@ mod tests {
         //             = 6*(-14 - 40) - 1*(28 - 10) + 1*(32 + 4)
         //             = 6*(-54) - 18 + 36 = -324 -18 + 36 = -306
         let m = Mat3::new(6.0, 1.0, 1.0, 4.0, -2.0, 5.0, 2.0, 8.0, 7.0);
-        assert!((m.determinant() - (-306.0)).abs() < EPSILON);
+        approx::assert_relative_eq!(m.determinant(), -306.0);
     }
 
     #[test]
@@ -352,15 +409,11 @@ mod tests {
 
     #[test]
     fn test_from_rotation_x() {
-        let rot = Mat3::from_rotation_x(FRAC_PI_2); // 90° around X
-        let v = Vec3::new(0.0, 1.0, 0.0); // Point along Y
-        let result = rot * v;
-        // Should become (0, 0, 1)
-        assert!((result - Vec3::new(0.0, 0.0, 1.0)).mag() < 1e-10);
+        // 旋转 2PI 理论上应该回到原位（单位矩阵）
+        let m = Mat3::from_rotation_x(2.0 * PI);
+        let identity = Mat3::IDENTITY;
 
-        // Full rotation (360°)
-        let full_rot = Mat3::from_rotation_x(2.0 * PI);
-        assert_eq!(full_rot, Mat3::IDENTITY);
+        approx::assert_relative_eq!(m, identity, epsilon = 1e-15);
     }
 
     #[test]

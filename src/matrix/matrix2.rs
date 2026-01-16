@@ -1,9 +1,10 @@
-use crate::EPSILON;
 use crate::Vec2;
+use approx::{AbsDiffEq, RelativeEq, UlpsEq};
 use derive_more::{Add, Constructor, Div, Sub};
 use std::ops::Mul;
 
-#[derive(Constructor, Copy, Clone, Debug, PartialOrd, Add, Sub, Div)]
+#[repr(C)]
+#[derive(Constructor, Copy, Clone, Debug, PartialEq, PartialOrd, Add, Sub, Div)]
 pub struct Mat2 {
     pub a: f64,
     pub b: f64,
@@ -18,7 +19,6 @@ impl Mat2 {
         c: 0.0,
         d: 1.0,
     };
-
     pub const ZERO: Mat2 = Mat2 {
         a: 0.0,
         b: 0.0,
@@ -26,34 +26,98 @@ impl Mat2 {
         d: 0.0,
     };
 
+    #[inline]
+    pub fn new_from_rows(row1: [f64; 2], row2: [f64; 2]) -> Self {
+        Self {
+            a: row1[0],
+            b: row1[1],
+            c: row2[0],
+            d: row2[1],
+        }
+    }
+
+    #[inline]
     pub fn determinant(&self) -> f64 {
         self.a * self.d - self.b * self.c
     }
 
+    #[inline]
     pub fn inverse(&self) -> Option<Mat2> {
         let det = self.determinant();
-        if det.abs() < EPSILON {
+        if det.abs_diff_eq(&0.0, 1e-9) {
             None
         } else {
             Some(Mat2::new(self.d, -self.b, -self.c, self.a) / det)
         }
     }
 
+    #[inline]
     pub fn transpose(&self) -> Mat2 {
         Mat2::new(self.a, self.c, self.b, self.d)
     }
 
+    #[inline]
     pub fn from_angle(angle: f64) -> Mat2 {
         let (sin, cos) = angle.sin_cos();
         Mat2::new(cos, -sin, sin, cos)
     }
 
+    #[inline]
     pub fn from_scale(sx: f64, sy: f64) -> Mat2 {
         Mat2::new(sx, 0.0, 0.0, sy)
+    }
+
+    #[inline]
+    pub fn to_array(&self) -> [f64; 4] {
+        [self.a, self.b, self.c, self.d]
+    }
+}
+
+impl AbsDiffEq for Mat2 {
+    type Epsilon = f64;
+    #[inline]
+    fn default_epsilon() -> Self::Epsilon {
+        f64::default_epsilon()
+    }
+    #[inline]
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        self.a.abs_diff_eq(&other.a, epsilon)
+            && self.b.abs_diff_eq(&other.b, epsilon)
+            && self.c.abs_diff_eq(&other.c, epsilon)
+            && self.d.abs_diff_eq(&other.d, epsilon)
+    }
+}
+
+impl RelativeEq for Mat2 {
+    #[inline]
+    fn default_max_relative() -> Self::Epsilon {
+        f64::default_max_relative()
+    }
+    #[inline]
+    fn relative_eq(&self, other: &Self, epsilon: Self::Epsilon, max_rel: Self::Epsilon) -> bool {
+        self.a.relative_eq(&other.a, epsilon, max_rel)
+            && self.b.relative_eq(&other.b, epsilon, max_rel)
+            && self.c.relative_eq(&other.c, epsilon, max_rel)
+            && self.d.relative_eq(&other.d, epsilon, max_rel)
+    }
+}
+
+impl UlpsEq for Mat2 {
+    #[inline]
+    fn default_max_ulps() -> u32 {
+        f64::default_max_ulps()
+    }
+    #[inline]
+    fn ulps_eq(&self, other: &Self, epsilon: Self::Epsilon, max_ulps: u32) -> bool {
+        self.a.ulps_eq(&other.a, epsilon, max_ulps)
+            && self.b.ulps_eq(&other.b, epsilon, max_ulps)
+            && self.c.ulps_eq(&other.c, epsilon, max_ulps)
+            && self.d.ulps_eq(&other.d, epsilon, max_ulps)
     }
 }
 
 impl Default for Mat2 {
+    #[inline]
     fn default() -> Self {
         Self::IDENTITY
     }
@@ -65,18 +129,9 @@ impl std::fmt::Display for Mat2 {
     }
 }
 
-impl PartialEq for Mat2 {
-    fn eq(&self, other: &Self) -> bool {
-        (self.a - other.a).abs() < EPSILON
-            && (self.b - other.b).abs() < EPSILON
-            && (self.c - other.c).abs() < EPSILON
-            && (self.d - other.d).abs() < EPSILON
-    }
-}
-
 impl Mul<f64> for Mat2 {
     type Output = Mat2;
-
+    #[inline]
     fn mul(self, rhs: f64) -> Self::Output {
         Mat2::new(self.a * rhs, self.b * rhs, self.c * rhs, self.d * rhs)
     }
@@ -84,7 +139,7 @@ impl Mul<f64> for Mat2 {
 
 impl Mul<Vec2> for Mat2 {
     type Output = Vec2;
-
+    #[inline]
     fn mul(self, v: Vec2) -> Self::Output {
         Vec2::new(self.a * v.x + self.b * v.y, self.c * v.x + self.d * v.y)
     }
@@ -92,7 +147,7 @@ impl Mul<Vec2> for Mat2 {
 
 impl Mul<Mat2> for Mat2 {
     type Output = Mat2;
-
+    #[inline]
     fn mul(self, rhs: Mat2) -> Self::Output {
         Mat2::new(
             self.a * rhs.a + self.b * rhs.c,
@@ -100,6 +155,20 @@ impl Mul<Mat2> for Mat2 {
             self.c * rhs.a + self.d * rhs.c,
             self.c * rhs.b + self.d * rhs.d,
         )
+    }
+}
+
+impl From<[f64; 4]> for Mat2 {
+    #[inline]
+    fn from(d: [f64; 4]) -> Self {
+        Self::new(d[0], d[1], d[2], d[3])
+    }
+}
+
+impl AsRef<[f64; 4]> for Mat2 {
+    #[inline]
+    fn as_ref(&self) -> &[f64; 4] {
+        unsafe { &*(self as *const Mat2 as *const [f64; 4]) }
     }
 }
 
@@ -207,12 +276,17 @@ mod tests {
     }
 
     #[test]
-    fn test_partial_eq_with_epsilon() {
+    fn test_matrix_approx_tolerance() {
+        let custom_epsilon = 1e-9;
         let m1 = Mat2::new(1.0, 0.0, 0.0, 1.0);
-        let m2 = Mat2::new(1.0 + EPSILON / 2.0, 0.0, 0.0, 1.0);
-        assert_eq!(m1, m2);
 
-        let m3 = Mat2::new(1.0 + 2.0 * EPSILON, 0.0, 0.0, 1.0);
-        assert_ne!(m1, m3);
+        // 1. 在公差范围内：使用 assert_abs_diff_eq!
+        // 这会自动检查 |m1.a - m2.a| < epsilon && |m1.b - m2.b| < epsilon ...
+        let m2 = Mat2::new(1.0 + custom_epsilon / 2.0, 0.0, 0.0, 1.0);
+        approx::assert_abs_diff_eq!(m1, m2, epsilon = custom_epsilon);
+
+        // 2. 在公差范围外：使用 assert_abs_diff_ne!
+        let m3 = Mat2::new(1.0 + 2.0 * custom_epsilon, 0.0, 0.0, 1.0);
+        approx::assert_abs_diff_ne!(m1, m3, epsilon = custom_epsilon);
     }
 }

@@ -1,8 +1,9 @@
-use crate::EPSILON;
 use crate::Mat3;
+use approx::{AbsDiffEq, RelativeEq, UlpsEq};
 use derive_more::{Add, Constructor, Div, Mul, Neg, Sub};
 
-#[derive(Add, Sub, Mul, Div, Neg, Clone, Copy, Debug, PartialOrd, Constructor)]
+#[repr(C)]
+#[derive(Add, Sub, Mul, Div, Neg, Clone, Copy, Debug, PartialEq, PartialOrd, Constructor)]
 pub struct Vec3 {
     pub x: f64,
     pub y: f64,
@@ -36,18 +37,22 @@ impl Vec3 {
         z: 1.0,
     };
 
+    #[inline]
     pub fn mag(&self) -> f64 {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 
+    #[inline]
     pub fn mag_sq(&self) -> f64 {
         self.x * self.x + self.y * self.y + self.z * self.z
     }
 
+    #[inline]
     pub fn dot(&self, other: &Vec3) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
+    #[inline]
     pub fn cross(&self, other: &Vec3) -> Vec3 {
         Vec3 {
             x: self.y * other.z - self.z * other.y,
@@ -56,25 +61,29 @@ impl Vec3 {
         }
     }
 
+    #[inline]
     pub fn map<F>(&self, f: F) -> Vec3
     where
         F: Fn(f64) -> f64,
     {
-        let x = f(self.x);
-        let y = f(self.y);
-        let z = f(self.z);
-        Vec3 { x, y, z }
+        Vec3 {
+            x: f(self.x),
+            y: f(self.y),
+            z: f(self.z),
+        }
     }
 
+    #[inline]
     pub fn normalize(&self) -> Vec3 {
         let mag = self.mag();
-        if mag < EPSILON {
+        if mag.abs_diff_eq(&0.0, f64::default_epsilon()) {
             Vec3::ZERO
         } else {
+            let inv = 1.0 / mag;
             Vec3 {
-                x: self.x / mag,
-                y: self.y / mag,
-                z: self.z / mag,
+                x: self.x * inv,
+                y: self.y * inv,
+                z: self.z * inv,
             }
         }
     }
@@ -83,7 +92,7 @@ impl Vec3 {
         let mag_self = self.mag();
         let mag_other = other.mag();
 
-        if mag_self < EPSILON || mag_other < EPSILON {
+        if mag_self.abs_diff_eq(&0.0, 1e-6) || mag_other.abs_diff_eq(&0.0, 1e-6) {
             return 0.0;
         }
 
@@ -91,12 +100,55 @@ impl Vec3 {
         cos_theta.clamp(-1.0, 1.0).acos()
     }
 
+    #[inline]
     pub fn angle_to_unit(&self, other: &Vec3) -> f64 {
         self.dot(other).clamp(-1.0, 1.0).acos()
     }
 }
 
+impl AbsDiffEq for Vec3 {
+    type Epsilon = f64;
+    #[inline]
+    fn default_epsilon() -> Self::Epsilon {
+        f64::default_epsilon()
+    }
+
+    #[inline]
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        self.x.abs_diff_eq(&other.x, epsilon)
+            && self.y.abs_diff_eq(&other.y, epsilon)
+            && self.z.abs_diff_eq(&other.z, epsilon)
+    }
+}
+
+impl RelativeEq for Vec3 {
+    #[inline]
+    fn default_max_relative() -> Self::Epsilon {
+        f64::default_max_relative()
+    }
+    #[inline]
+    fn relative_eq(&self, other: &Self, epsilon: Self::Epsilon, max_rel: Self::Epsilon) -> bool {
+        self.x.relative_eq(&other.x, epsilon, max_rel)
+            && self.y.relative_eq(&other.y, epsilon, max_rel)
+            && self.z.relative_eq(&other.z, epsilon, max_rel)
+    }
+}
+
+impl UlpsEq for Vec3 {
+    #[inline]
+    fn default_max_ulps() -> u32 {
+        f64::default_max_ulps()
+    }
+    #[inline]
+    fn ulps_eq(&self, other: &Self, epsilon: Self::Epsilon, max_ulps: u32) -> bool {
+        self.x.ulps_eq(&other.x, epsilon, max_ulps)
+            && self.y.ulps_eq(&other.y, epsilon, max_ulps)
+            && self.z.ulps_eq(&other.z, epsilon, max_ulps)
+    }
+}
+
 impl Default for Vec3 {
+    #[inline]
     fn default() -> Self {
         Self::ZERO
     }
@@ -108,16 +160,9 @@ impl std::fmt::Display for Vec3 {
     }
 }
 
-impl PartialEq for Vec3 {
-    fn eq(&self, other: &Self) -> bool {
-        (self.x - other.x).abs() < EPSILON
-            && (self.y - other.y).abs() < EPSILON
-            && (self.z - other.z).abs() < EPSILON
-    }
-}
-
 impl std::ops::Mul<Vec3> for f64 {
     type Output = Vec3;
+    #[inline]
     fn mul(self, vec: Vec3) -> Self::Output {
         Vec3 {
             x: self * vec.x,
@@ -129,6 +174,7 @@ impl std::ops::Mul<Vec3> for f64 {
 
 impl std::ops::Mul<Vec3> for Vec3 {
     type Output = Vec3;
+    #[inline]
     fn mul(self, vec: Vec3) -> Self::Output {
         Vec3 {
             x: self.x * vec.x,
@@ -140,6 +186,7 @@ impl std::ops::Mul<Vec3> for Vec3 {
 
 impl std::ops::Mul<Mat3> for Vec3 {
     type Output = Vec3;
+    #[inline]
     fn mul(self, m: Mat3) -> Vec3 {
         Vec3::new(
             self.x * m.a + self.y * m.d + self.z * m.g,
@@ -149,19 +196,34 @@ impl std::ops::Mul<Mat3> for Vec3 {
     }
 }
 
+impl From<[f64; 3]> for Vec3 {
+    #[inline]
+    fn from(arr: [f64; 3]) -> Self {
+        Self::new(arr[0], arr[1], arr[2])
+    }
+}
+
+impl From<Vec3> for [f64; 3] {
+    #[inline]
+    fn from(v: Vec3) -> Self {
+        [v.x, v.y, v.z]
+    }
+}
+
 pub type Point3D = Vec3;
 
 impl Point3D {
+    #[inline]
     pub fn dist(&self, other: &Point3D) -> f64 {
         (*self - *other).mag()
     }
+    #[inline]
     pub fn dist_sq(&self, other: &Point3D) -> f64 {
         (*self - *other).mag_sq()
     }
 }
 
 #[cfg(test)]
-
 mod tests {
     use super::*;
     use std::f64::consts::{FRAC_PI_2, PI};
@@ -228,7 +290,7 @@ mod tests {
     #[test]
     fn test_mag() {
         let v = Vec3::new(1.0, 2.0, 2.0);
-        assert!((v.mag() - 3.0).abs() < EPSILON);
+        approx::assert_relative_eq!(v.mag(), 3.0);
     }
 
     #[test]
@@ -291,7 +353,7 @@ mod tests {
         assert!((y.angle_to(&z) - FRAC_PI_2).abs() < 1e-10);
 
         // Same direction → 0
-        assert!(x.angle_to(&x) < EPSILON);
+        approx::assert_relative_eq!(x.angle_to(&x), 0.0);
 
         // Opposite direction → π
         assert!((x.angle_to(&-x) - PI).abs() < 1e-10);
@@ -314,7 +376,7 @@ mod tests {
     fn test_dist() {
         let v1 = Point3D::new(1.0, 2.0, 3.0);
         let v2 = Point3D::new(4.0, 6.0, 3.0);
-        assert!((v1.dist(&v2) - 5.0).abs() < EPSILON);
+        approx::assert_relative_eq!(v1.dist(&v2), 5.0);
     }
 
     #[test]
@@ -331,13 +393,23 @@ mod tests {
     }
 
     #[test]
-    fn test_partial_eq_epsilon() {
+    fn test_approx_tolerance() {
+        let custom_epsilon = 1e-9;
         let v1 = Vec3::new(1.0, 1.0, 1.0);
-        let v2 = Vec3::new(1.0 + EPSILON / 2.0, 1.0, 1.0);
-        assert_eq!(v1, v2); // Within tolerance
 
-        let v3 = Vec3::new(1.0 + 2.0 * EPSILON, 1.0, 1.0);
-        assert_ne!(v1, v3); // Outside tolerance
+        // 1. 测试“在公差范围内”：使用 assert_abs_diff_eq!
+        let v2 = Vec3::new(1.0 + custom_epsilon / 2.0, 1.0, 1.0);
+        // 逻辑：|v1 - v2| < 1e-9
+        approx::assert_abs_diff_eq!(v1, v2, epsilon = custom_epsilon);
+
+        // 2. 测试“在公差范围外”：使用 assert_abs_diff_ne!
+        let v3 = Vec3::new(1.0 + 2.0 * custom_epsilon, 1.0, 1.0);
+        // 逻辑：|v1 - v3| >= 1e-9
+        approx::assert_abs_diff_ne!(v1, v3, epsilon = custom_epsilon);
+
+        // 3. 补充：如果你想测试严格相等（现在的 == 逻辑）
+        // 这行现在会报错，因为 v1 和 v2 在内存二进制位上不完全一致
+        // assert_eq!(v1, v2);
     }
 
     #[test]
