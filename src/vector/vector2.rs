@@ -10,10 +10,10 @@ pub struct Vec2 {
 }
 
 impl Vec2 {
-    pub const ZERO: Vec2 = Vec2 { x: 0.0, y: 0.0 };
-    pub const ONE: Vec2 = Vec2 { x: 1.0, y: 1.0 };
-    pub const UNIT_X: Vec2 = Vec2 { x: 1.0, y: 0.0 };
-    pub const UNIT_Y: Vec2 = Vec2 { x: 0.0, y: 1.0 };
+    pub const ZERO: Vec2 = Vec2::new(0.0, 0.0);
+    pub const ONE: Vec2 = Vec2::new(1.0, 1.0);
+    pub const UNIT_X: Vec2 = Vec2::new(1.0, 0.0);
+    pub const UNIT_Y: Vec2 = Vec2::new(0.0, 1.0);
 
     #[inline]
     pub fn mag(&self) -> f64 {
@@ -40,10 +40,7 @@ impl Vec2 {
     where
         F: Fn(f64) -> f64,
     {
-        Vec2 {
-            x: f(self.x),
-            y: f(self.y),
-        }
+        Vec2::new(f(self.x), f(self.y))
     }
 
     #[inline]
@@ -53,10 +50,7 @@ impl Vec2 {
             Vec2::ZERO
         } else {
             let inv = 1.0 / mag;
-            Vec2 {
-                x: self.x * inv,
-                y: self.y * inv,
-            }
+            Vec2::new(self.x * inv, self.y * inv)
         }
     }
 
@@ -143,10 +137,7 @@ impl std::ops::Mul<Vec2> for f64 {
     type Output = Vec2;
     #[inline]
     fn mul(self, vec: Vec2) -> Self::Output {
-        Vec2 {
-            x: self * vec.x,
-            y: self * vec.y,
-        }
+        Vec2::new(self * vec.x, self * vec.y)
     }
 }
 
@@ -154,10 +145,7 @@ impl std::ops::Mul<Vec2> for Vec2 {
     type Output = Vec2;
     #[inline]
     fn mul(self, vector: Vec2) -> Vec2 {
-        Vec2 {
-            x: self.x * vector.x,
-            y: self.y * vector.y,
-        }
+        Vec2::new(self.x * vector.x, self.y * vector.y)
     }
 }
 

@@ -18,29 +18,8 @@ pub struct Mat3 {
 }
 
 impl Mat3 {
-    pub const IDENTITY: Mat3 = Mat3 {
-        a: 1.0,
-        b: 0.0,
-        c: 0.0,
-        d: 0.0,
-        e: 1.0,
-        f: 0.0,
-        g: 0.0,
-        h: 0.0,
-        i: 1.0,
-    };
-
-    pub const ZERO: Mat3 = Mat3 {
-        a: 0.0,
-        b: 0.0,
-        c: 0.0,
-        d: 0.0,
-        e: 0.0,
-        f: 0.0,
-        g: 0.0,
-        h: 0.0,
-        i: 0.0,
-    };
+    pub const IDENTITY: Mat3 = Mat3::new(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+    pub const ZERO: Mat3 = Mat3::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
 
     #[inline]
     pub fn determinant(&self) -> f64 {

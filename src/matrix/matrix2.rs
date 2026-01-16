@@ -13,27 +13,12 @@ pub struct Mat2 {
 }
 
 impl Mat2 {
-    pub const IDENTITY: Mat2 = Mat2 {
-        a: 1.0,
-        b: 0.0,
-        c: 0.0,
-        d: 1.0,
-    };
-    pub const ZERO: Mat2 = Mat2 {
-        a: 0.0,
-        b: 0.0,
-        c: 0.0,
-        d: 0.0,
-    };
+    pub const IDENTITY: Mat2 = Mat2::new(1.0, 0.0, 0.0, 1.0);
+    pub const ZERO: Mat2 = Mat2::new(0.0, 0.0, 0.0, 0.0);
 
     #[inline]
     pub fn new_from_rows(row1: [f64; 2], row2: [f64; 2]) -> Self {
-        Self {
-            a: row1[0],
-            b: row1[1],
-            c: row2[0],
-            d: row2[1],
-        }
+        Self::new(row1[0], row1[1], row2[0], row2[1])
     }
 
     #[inline]

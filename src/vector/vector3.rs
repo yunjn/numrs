@@ -11,31 +11,11 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
-    pub const ZERO: Vec3 = Vec3 {
-        x: 0.0,
-        y: 0.0,
-        z: 0.0,
-    };
-    pub const ONE: Vec3 = Vec3 {
-        x: 1.0,
-        y: 1.0,
-        z: 1.0,
-    };
-    pub const UNIT_X: Vec3 = Vec3 {
-        x: 1.0,
-        y: 0.0,
-        z: 0.0,
-    };
-    pub const UNIT_Y: Vec3 = Vec3 {
-        x: 0.0,
-        y: 1.0,
-        z: 0.0,
-    };
-    pub const UNIT_Z: Vec3 = Vec3 {
-        x: 0.0,
-        y: 0.0,
-        z: 1.0,
-    };
+    pub const ZERO: Vec3 = Vec3::new(0.0, 0.0, 0.0);
+    pub const ONE: Vec3 = Vec3::new(1.0, 1.0, 1.0);
+    pub const UNIT_X: Vec3 = Vec3::new(1.0, 0.0, 0.0);
+    pub const UNIT_Y: Vec3 = Vec3::new(0.0, 1.0, 0.0);
+    pub const UNIT_Z: Vec3 = Vec3::new(0.0, 0.0, 1.0);
 
     #[inline]
     pub fn mag(&self) -> f64 {
@@ -54,11 +34,11 @@ impl Vec3 {
 
     #[inline]
     pub fn cross(&self, other: &Vec3) -> Vec3 {
-        Vec3 {
-            x: self.y * other.z - self.z * other.y,
-            y: self.z * other.x - self.x * other.z,
-            z: self.x * other.y - self.y * other.x,
-        }
+        Vec3::new(
+            self.y * other.z - self.z * other.y,
+            self.z * other.x - self.x * other.z,
+            self.x * other.y - self.y * other.x,
+        )
     }
 
     #[inline]
@@ -66,11 +46,7 @@ impl Vec3 {
     where
         F: Fn(f64) -> f64,
     {
-        Vec3 {
-            x: f(self.x),
-            y: f(self.y),
-            z: f(self.z),
-        }
+        Vec3::new(f(self.x), f(self.y), f(self.z))
     }
 
     #[inline]
@@ -80,11 +56,7 @@ impl Vec3 {
             Vec3::ZERO
         } else {
             let inv = 1.0 / mag;
-            Vec3 {
-                x: self.x * inv,
-                y: self.y * inv,
-                z: self.z * inv,
-            }
+            Vec3::new(self.x * inv, self.y * inv, self.z * inv)
         }
     }
 
@@ -164,11 +136,7 @@ impl std::ops::Mul<Vec3> for f64 {
     type Output = Vec3;
     #[inline]
     fn mul(self, vec: Vec3) -> Self::Output {
-        Vec3 {
-            x: self * vec.x,
-            y: self * vec.y,
-            z: self * vec.z,
-        }
+        Vec3::new(self * vec.x, self * vec.y, self * vec.z)
     }
 }
 
@@ -176,11 +144,7 @@ impl std::ops::Mul<Vec3> for Vec3 {
     type Output = Vec3;
     #[inline]
     fn mul(self, vec: Vec3) -> Self::Output {
-        Vec3 {
-            x: self.x * vec.x,
-            y: self.y * vec.y,
-            z: self.z * vec.z,
-        }
+        Vec3::new(self.x * vec.x, self.y * vec.y, self.z * vec.z)
     }
 }
 
