@@ -1,6 +1,6 @@
 ## numrs
 
-A high-performance, precision-focused 2D/3D linear algebra library written in Rust.
+A high-performance, precision-focused 2D/3D linear algebra library for learning.
 
 ## Features
 
