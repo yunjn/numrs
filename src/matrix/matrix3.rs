@@ -133,7 +133,7 @@ impl std::fmt::Display for Mat3 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "[{}, {}, {}]\n[{}, {}, {}]\n[{}, {}, {}]",
+            "[[{}, {}, {}],\n[{}, {}, {}],\n[{}, {}, {}]]",
             self.a, self.b, self.c, self.d, self.e, self.f, self.g, self.h, self.i
         )
     }
@@ -234,7 +234,7 @@ mod tests {
     fn test_display() {
         let m = Mat3::new(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0);
         let s = format!("{}", m);
-        assert_eq!(s, "[1, 2, 3]\n[4, 5, 6]\n[7, 8, 9]");
+        assert_eq!(s, "[[1, 2, 3],\n[4, 5, 6],\n[7, 8, 9]]");
     }
 
     #[test]

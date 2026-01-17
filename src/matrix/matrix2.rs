@@ -110,7 +110,7 @@ impl Default for Mat2 {
 
 impl std::fmt::Display for Mat2 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "[{}, {}]\n[{}, {}]", self.a, self.b, self.c, self.d)
+        write!(f, "[[{}, {}],\n[{}, {}]]", self.a, self.b, self.c, self.d)
     }
 }
 
@@ -171,6 +171,13 @@ mod tests {
     #[test]
     fn test_default() {
         assert_eq!(Mat2::default(), Mat2::IDENTITY);
+    }
+
+    #[test]
+    fn test_display() {
+        let m = Mat2::new(1.0, 2.0, 3.0, 4.0);
+        let s = format!("{}", m);
+        assert_eq!(s, "[[1, 2],\n[3, 4]]");
     }
 
     #[test]
