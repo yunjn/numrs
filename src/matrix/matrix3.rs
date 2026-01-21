@@ -268,7 +268,6 @@ mod tests {
 
     #[test]
     fn test_determinant_correctness() {
-        // From: https://www.mathsisfun.com/algebra/matrix-determinant.html
         // Matrix:
         // [6 1 1]
         // [4 -2 5]
