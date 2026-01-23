@@ -20,6 +20,16 @@ impl Vec4 {
     pub const UNIT_W: Vec4 = Vec4::new(0.0, 0.0, 0.0, 1.0);
 
     #[inline]
+    pub fn point(x: f64, y: f64, z: f64) -> Self {
+        Self::new(x, y, z, 1.0)
+    }
+
+    #[inline]
+    pub fn direction(x: f64, y: f64, z: f64) -> Self {
+        Self::new(x, y, z, 0.0)
+    }
+
+    #[inline]
     pub fn mag(&self) -> f64 {
         (self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w).sqrt()
     }
@@ -75,6 +85,21 @@ impl Vec4 {
         } else {
             Vec4::new(self.x / self.w, self.y / self.w, self.z / self.w, 1.0)
         }
+    }
+
+    #[inline]
+    pub fn lerp(self, other: Self, t: f64) -> Self {
+        self + (other - self) * t
+    }
+
+    #[inline]
+    pub fn clamp(self, min: Self, max: Self) -> Self {
+        Vec4::new(
+            self.x.clamp(min.x, max.x),
+            self.y.clamp(min.y, max.y),
+            self.z.clamp(min.z, max.z),
+            self.w.clamp(min.w, max.w),
+        )
     }
 }
 
@@ -181,6 +206,23 @@ impl From<(Vec3, f64)> for Vec4 {
     #[inline]
     fn from((v, w): (Vec3, f64)) -> Self {
         Vec4::new(v.x, v.y, v.z, w)
+    }
+}
+
+impl From<Vec4> for (f64, f64, f64, f64) {
+    fn from(v: Vec4) -> Self {
+        (v.x, v.y, v.z, v.w)
+    }
+}
+
+impl TryFrom<&[f64]> for Vec4 {
+    type Error = &'static str;
+    fn try_from(slice: &[f64]) -> Result<Self, Self::Error> {
+        if slice.len() >= 4 {
+            Ok(Self::new(slice[0], slice[1], slice[2], slice[3]))
+        } else {
+            Err("Slice too short")
+        }
     }
 }
 
